@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Cumpleaños 🎉</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+        
+        /* Controles */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 99;
+        }
+        
+        .btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 100, 255, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        
+        .btn:active {
+            background: rgba(0, 150, 255, 1);
+            transform: scale(0.95);
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .btn-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>Cargando AR...</h2>
+        <p>Asegúrate de permitir acceso a la cámara</p>
+    </div>
+    
+    <div class="controls">
+        <div class="btn-group">
+            <div class="btn-row">
+                <button class="btn" id="btnUp" title="Arriba">⬆️</button>
+            </div>
+            <div class="btn-row">
+                <button class="btn" id="btnLeft" title="Izquierda">⬅️</button>
+                <button class="btn" id="btnDown" title="Abajo">⬇️</button>
+                <button class="btn" id="btnRight" title="Derecha">➡️</button>
+            </div>
+            <div class="btn-row">
+                <button class="btn" id="btnZoomOut" title="Alejar">➖</button>
+                <button class="btn" id="btnZoomIn" title="Acercar">➕</button>
+            </div>
+        </div>
+    </div>
+
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: light; matrixCodeType: 3x3;"
+    >
+        <!-- Imagen de cumpleaños -->
+        <a-image
+            src="cumple.png"
+            position="0 0 -3"
+            scale="2 2 1"
+            rotation="0 0 0"
+            id="cumpleImage"
+        ></a-image>
+
+        <!-- Audio que se reproduce automáticamente -->
+        <a-entity
+            id="audioEntity"
+            sound="src: url(cancion.mp3); autoplay: true; loop: true; volume: 1;"
+        ></a-entity>
+
+        <!-- Cámara -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const img = document.getElementById('cumpleImage');
+        let posX = 0, posY = 0, scale = 2;
+        const step = 0.3;
+        const scaleStep = 0.3;
+        const minScale = 0.5;
+        const maxScale = 5;
+
+        // Mostrar mensaje cuando esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loading').style.display = 'block';
+        });
+
+        // Ocultar loading cuando la escena esté lista
+        document.querySelector('a-scene').addEventListener('loaded', function() {
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        // Animación de entrada
+        img.setAttribute('animation', 'property: scale; from: 0 0 1; to: 2 2 1; duration: 1000; easing: easeOutElastic');
+
+        // Función para actualizar posición y escala
+        function updateImage() {
+            img.setAttribute('position', `${posX} ${posY} -3`);
+            img.setAttribute('scale', `${scale} ${scale} 1`);
+        }
+
+        // Controles de movimiento
+        document.getElementById('btnUp').addEventListener('click', () => {
+            posY += step;
+            updateImage();
+        });
+
+        document.getElementById('btnDown').addEventListener('click', () => {
+            posY -= step;
+            updateImage();
+        });
+
+        document.getElementById('btnLeft').addEventListener('click', () => {
+            posX -= step;
+            updateImage();
+        });
+
+        document.getElementById('btnRight').addEventListener('click', () => {
+            posX += step;
+            updateImage();
+        });
+
+        // Controles de escala
+        document.getElementById('btnZoomIn').addEventListener('click', () => {
+            if (scale < maxScale) {
+                scale += scaleStep;
+                updateImage();
+            }
+        });
+
+        document.getElementById('btnZoomOut').addEventListener('click', () => {
+            if (scale > minScale) {
+                scale -= scaleStep;
+                updateImage();
+            }
+        });
+
+        // Soporte para gestos de pinch (zoom táctil)
+        let lastDistance = 0;
+
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+
+                if (lastDistance > 0) {
+                    const delta = distance - lastDistance;
+                    if (delta > 5 && scale < maxScale) {
+                        scale += 0.1;
+                        updateImage();
+                    } else if (delta < -5 && scale > minScale) {
+                        scale -= 0.1;
+                        updateImage();
+                    }
+                }
+                lastDistance = distance;
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', function() {
+            lastDistance = 0;
+        });
+    </script>
+</body>
+</html>
