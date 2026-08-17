@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Cumpleaños 🎉</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>Cargando AR...</h2>
+        <p>Asegúrate de permitir acceso a la cámara</p>
+    </div>
+
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: light; matrixCodeType: 3x3;"
+    >
+        <!-- Imagen de cumpleaños -->
+        <a-image
+            src="cumple.png"
+            position="0 0 -3"
+            scale="2 2 1"
+            rotation="0 0 0"
+            id="cumpleImage"
+        ></a-image>
+
+        <!-- Audio que se reproduce automáticamente -->
+        <a-entity
+            id="audioEntity"
+            sound="src: url(cancion.mp3); autoplay: true; loop: true; volume: 1;"
+        ></a-entity>
+
+        <!-- Cámara -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const img = document.getElementById('cumpleImage');
+        let posX = 0, posY = 0, scale = 2;
+        const minScale = 0.5;
+        const maxScale = 5;
+
+        // Mostrar loading
+        document.getElementById('loading').style.display = 'block';
+
+        // Ocultar loading cuando la escena esté lista
+        document.querySelector('a-scene').addEventListener('loaded', function() {
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        // Animación de entrada
+        img.setAttribute('animation', 'property: scale; from: 0 0 1; to: 2 2 1; duration: 1000; easing: easeOutElastic');
+
+        function updateImage() {
+            img.setAttribute('position', `${posX} ${posY} -3`);
+            img.setAttribute('scale', `${scale} ${scale} 1`);
+        }
+
+        // ===== PINCH (Zoom) =====
+        let lastDistance = 0;
+
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+
+                if (lastDistance > 0) {
+                    const delta = distance - lastDistance;
+                    if (delta > 2) {
+                        scale = Math.min(scale + 0.1, maxScale);
+                        updateImage();
+                    } else if (delta < -2) {
+                        scale = Math.max(scale - 0.1, minScale);
+                        updateImage();
+                    }
+                }
+                lastDistance = distance;
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', function() {
+            lastDistance = 0;
+        });
+
+        // ===== DRAG (Movimiento) =====
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                isDragging = true;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 1 && isDragging) {
+                const touchX = e.touches[0].clientX;
+                const touchY = e.touches[0].clientY;
+                const deltaX = (touchX - touchStartX) * 0.005;
+                const deltaY = (touchStartY - touchY) * 0.005;
+
+                posX += deltaX;
+                posY += deltaY;
+                updateImage();
+
+                touchStartX = touchX;
+                touchStartY = touchY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', function() {
+            isDragging = false;
+        }, { passive: true });
+    </script>
+</body>
+</html>
